@@ -337,43 +337,31 @@ class CutsceneCatalog:
         return self.items
 
     def _assign_audio_tracks(self, meta: CutsceneMetadata):
-        """Map Chinese, Japanese, English, and BGM audio files to this cutscene."""
+        """
+        Map audio files to this cutscene ONLY if genuine and verified.
+        Never guess random tracks by file duration.
+        """
         meta.mapped_tracks = {}
 
+        # 1. Native Audio:
+        # If the video already has high-quality native audio (e.g. TL_HEIST, guides, login, etc.),
+        # use the original audio directly. Do NOT map fake language tracks!
         if meta.audio_status == "native_audio":
             meta.mapped_tracks["orig"] = meta.file_path
+            return
 
-        if self._available_audio.get("zh"):
-            meta.mapped_tracks["zh"] = self._find_best_audio(self._available_audio["zh"], meta.duration_sec)
+        # 2. Silent Dummy / No Audio Clips:
+        # Only map an audio track if there is a real, genuine filename match.
+        stem = os.path.splitext(meta.filename)[0].lower()
+        
+        for lang_key in ["ja", "zh", "en", "bgm"]:
+            for audio_path in self._available_audio.get(lang_key, []):
+                audio_stem = os.path.splitext(os.path.basename(audio_path))[0].lower()
+                # Exact or direct stem match only
+                if stem in audio_stem or (len(audio_stem) > 5 and audio_stem in stem):
+                    meta.mapped_tracks[lang_key] = audio_path
+                    break
 
-        if self._available_audio.get("ja"):
-            meta.mapped_tracks["ja"] = self._find_best_audio(self._available_audio["ja"], meta.duration_sec)
-
-        if self._available_audio.get("en"):
-            meta.mapped_tracks["en"] = self._find_best_audio(self._available_audio["en"], meta.duration_sec)
-
-        if self._available_audio.get("bgm"):
-            meta.mapped_tracks["bgm"] = self._find_best_audio(self._available_audio["bgm"], meta.duration_sec)
-
-    def _find_best_audio(self, audio_list: List[str], target_duration: float) -> Optional[str]:
-        """Find the audio file whose duration is closest to the target video duration."""
-        if not audio_list:
-            return None
-        if target_duration <= 0.0:
-            return audio_list[0]
-
-        best_match = audio_list[0]
-        best_diff = float("inf")
-
-        for p in audio_list:
-            size = os.path.getsize(p)
-            est_sec = size / (192 * 1024)
-            diff = abs(est_sec - target_duration)
-            if diff < best_diff:
-                best_diff = diff
-                best_match = p
-
-        return best_match
 
     def get_categories(self) -> List[str]:
         """Return list of distinct categories."""
