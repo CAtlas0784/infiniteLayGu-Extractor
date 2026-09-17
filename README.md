@@ -5,6 +5,13 @@
 
 ---
 
+<div align="center">
+  <img src="assets/showcase.png" alt="InfiniteLaygu Extractor UI Showcase" width="100%" />
+  <p><i>InfiniteLaygu Extractor - 4K High-DPI UI with In-App Cutscene Player & Multilingual Audio Inspector</i></p>
+</div>
+
+---
+
 ## 🌟 ฟีเจอร์หลัก (Key Features)
 
 ### 1. 🌐 Universal Multi-Game Support (ใช้งานได้กับทุกเกม)
