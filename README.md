@@ -1,7 +1,7 @@
 # InfiniteLaygu Extractor (Universal Game Asset & Cutscene Suite)
 
 > **InfiniteLaygu Extractor** (ตั้งตามชื่อ *Infinite / Anan / Laygu* 🚀)  
-> แอปพลิเคชันและชุดเครื่องมือสำหรับสกัด Asset, ทำ Data Mining, และโปรแกรมเล่นคัตซีนพร้อมระบบรวมเสียงพากย์หลายภาษา **รองรับทั้งเกม Project Mugen / Ananta (CBT 4229938) และเกม Unity / Unreal / NetEase หรือโฟลเดอร์ทั่วไปแบบ Universal**
+> แอปพลิเคชันและชุดเครื่องมือสำหรับสกัด Asset, ทำ Data Mining, และโปรแกรมเล่นคัตซีนพร้อมระบบรวมเสียงพากย์หลายภาษา **รองรับทั้งเกม Ananta และเกม Unity / Unreal / หรือโฟลเดอร์ทั่วไปแบบ Universal (มั้งนะ)**
 
 ---
 
