@@ -1,0 +1,3 @@
+# Ananta Asset Extractor & Dataminer
+customtkinter>=6.0.0
+packaging>=23.0

@@ -1,0 +1,10 @@
+{
+  "game_root": "E:\\Ananta_beta\\Ananta",
+  "streaming_assets": "E:\\Ananta_beta\\Ananta\\Ananta_Data\\StreamingAssets",
+  "corelib_dll": "E:\\Ananta_beta\\Ananta\\Ananta_Data\\Plugins\\x86_64\\CoreLib.dll",
+  "animestudio_cli": "tools\\AnimeStudio.CLI.exe",
+  "dummy_dlls": "tools\\DummyDll",
+  "ffmpeg": "tools\\ffmpeg.exe",
+  "vgmstream": "tools\\vgmstream-cli.exe",
+  "output_dir": "output"
+}

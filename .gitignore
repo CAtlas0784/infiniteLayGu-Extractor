@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary & cache files
+output/videos/.player_cache/
+output/videos/.catalog_cache.json
+output/audio/.tmp/
+*.tmp
+
+# Large extracted game assets (videos, audio, datamine dumps)
+# Keep directories tracked via .gitkeep
+output/videos/*
+!output/videos/.gitkeep
+output/audio/*
+!output/audio/.gitkeep
+output/datamine/*
+!output/datamine/.gitkeep
+output/models_and_textures/*
+!output/models_and_textures/.gitkeep
+
+# IDEs & System
+.vscode/
+.idea/
+*.log
+Thumbs.db
+.DS_Store
