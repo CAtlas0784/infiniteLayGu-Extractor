@@ -1,9 +1,9 @@
 @echo off
-title Ananta Asset Extractor and Dataminer
+title InfiniteLaygu Extractor - Universal Game Asset & Cutscene Suite
 cd /d "%~dp0"
 
 echo ========================================================
-echo   Ananta Asset Extractor and Dataminer (Client 4229938)
+echo   InfiniteLaygu Extractor - Universal Game Asset Suite
 echo ========================================================
 echo.
 echo Starting 4K Ultra-Sharp GUI Application...

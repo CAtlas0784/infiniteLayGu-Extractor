@@ -1,9 +1,10 @@
 """
-Ananta Unified Asset Extractor & Dataminer - 4K High-DPI Modern Desktop UI
-Built with CustomTkinter for vector-sharp typography and native 4K scaling.
-Includes:
-- Full Asset Extraction Engine (Videos, 3D Models, Audio/Voices, Datamine)
-- In-App Cutscene Player & Asset Dependency Inspector with Multilingual Audio Syncing
+InfiniteLaygu Extractor - Universal Game Asset Suite, Media Inspector & Multilingual Audio Syncer
+4K High-DPI Modern Desktop UI built with CustomTkinter.
+Supports:
+- Universal Asset Extraction across Any Game or Custom Folder (Videos, 3D Models, Audio/Wwise, Datamine)
+- Pre-configured High-Performance Pipeline for Project Mugen / Ananta CBT (Client 4229938)
+- In-App Cutscene Player & Asset Dependency Inspector with Multilingual Audio Syncing (JP / CN / EN / BGM / Custom)
 """
 import os
 import sys
@@ -27,10 +28,10 @@ from core.cutscene_syncer import CutsceneCatalog, CutscenePlayerEngine, Cutscene
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-class ModernExtractorApp(ctk.CTk):
+class InfiniteLayguApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("Ananta Asset Suite & Cutscene Player (Client 4229938)")
+        self.title("InfiniteLaygu Extractor - Universal Game Asset & Cutscene Suite")
         self.geometry("1180x820")
         self.minsize(1050, 720)
 
@@ -38,6 +39,7 @@ class ModernExtractorApp(ctk.CTk):
         self.scaling = ctk.ScalingTracker.get_widget_scaling(self)
         
         self.cfg = load_config()
+        self.game_root_var = ctk.StringVar(value=resolve_path(self.cfg.get("game_root", "")))
         self.output_dir_var = ctk.StringVar(value=resolve_path(self.cfg.get("output_dir", "output")))
         self.status_var = ctk.StringVar(value="Ready")
         self.is_running = False
@@ -47,10 +49,10 @@ class ModernExtractorApp(ctk.CTk):
         self.player_engine = CutscenePlayerEngine(self.output_dir_var.get(), ffmpeg_path=self.cfg.get("ffmpeg"))
         self.selected_cutscene: Optional[CutsceneMetadata] = None
         self.selected_lang_var = ctk.StringVar(value="ja")  # default Japanese
+        self.custom_audio_override: Optional[str] = None
         self.player_status_var = ctk.StringVar(value="Select a cutscene from the list to inspect and play")
         self.search_query_var = ctk.StringVar(value="")
         self.cat_filter_var = ctk.StringVar(value="All")
-        self.video_card_buttons: List[ctk.CTkButton] = []
 
         self._build_ui()
         self._check_environment()
@@ -64,10 +66,10 @@ class ModernExtractorApp(ctk.CTk):
         title_box = ctk.CTkFrame(header, fg_color="transparent")
         title_box.pack(side="left", padx=20, pady=10)
 
-        title_lbl = ctk.CTkLabel(title_box, text="PROJECT MUGEN / ANANTA ASSET EXTRACTOR", font=ctk.CTkFont(family="Segoe UI", size=20, weight="bold"))
+        title_lbl = ctk.CTkLabel(title_box, text="INFINITELAYGU EXTRACTOR", font=ctk.CTkFont(family="Segoe UI", size=20, weight="bold"))
         title_lbl.pack(anchor="w")
 
-        sub_lbl = ctk.CTkLabel(title_box, text="4K Ultra-Sharp Edition | Datamining & Cutscene Inspector Suite", font=ctk.CTkFont(family="Segoe UI", size=12), text_color="#8c909e")
+        sub_lbl = ctk.CTkLabel(title_box, text="Universal Game Asset Extractor, Media Inspector & Multilingual Syncer", font=ctk.CTkFont(family="Segoe UI", size=12), text_color="#8c909e")
         sub_lbl.pack(anchor="w")
 
         btn_box = ctk.CTkFrame(header, fg_color="transparent")
@@ -128,12 +130,31 @@ class ModernExtractorApp(ctk.CTk):
     def _build_dashboard_tab(self):
         p = self.tab_dash
 
+        # Target Game Directory & Mode Card (Universal Game Support)
+        game_card = ctk.CTkFrame(p, corner_radius=10, fg_color="#242631")
+        game_card.pack(fill="x", padx=12, pady=(10, 6))
+
+        game_title = ctk.CTkLabel(game_card, text="🎯 Target Game Client / Folder (รองรับทุกเกม & โฟลเดอร์ทั่วไป)",
+                                 font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"))
+        game_title.pack(anchor="w", padx=16, pady=(10, 4))
+
+        game_row = ctk.CTkFrame(game_card, fg_color="transparent")
+        game_row.pack(fill="x", padx=16, pady=(0, 10))
+
+        game_entry = ctk.CTkEntry(game_row, textvariable=self.game_root_var, font=ctk.CTkFont(family="Segoe UI", size=12), height=34)
+        game_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+
+        change_game_btn = ctk.CTkButton(game_row, text="🎮 Change Game...", font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+                                        fg_color="#16a085", hover_color="#117a65", width=140, height=34,
+                                        command=self._browse_game_root)
+        change_game_btn.pack(side="right")
+
         # Environment Status Card
         env_card = ctk.CTkFrame(p, corner_radius=10, fg_color="#242631")
-        env_card.pack(fill="x", padx=12, pady=10)
+        env_card.pack(fill="x", padx=12, pady=6)
 
-        card_title = ctk.CTkLabel(env_card, text="Game Engine & Decoders Status", font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"))
-        card_title.pack(anchor="w", padx=16, pady=(12, 6))
+        card_title = ctk.CTkLabel(env_card, text="Decoders & Engines Status", font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"))
+        card_title.pack(anchor="w", padx=16, pady=(10, 4))
 
         self.lbl_game = ctk.CTkLabel(env_card, text="Game Directory: Checking...", font=ctk.CTkFont(family="Segoe UI", size=12), text_color="#8c909e", anchor="w")
         self.lbl_game.pack(fill="x", padx=16, pady=2)
@@ -145,7 +166,7 @@ class ModernExtractorApp(ctk.CTk):
         self.lbl_anime.pack(fill="x", padx=16, pady=2)
 
         self.lbl_wwise = ctk.CTkLabel(env_card, text="Audio Tools (vgmstream & ffmpeg): Checking...", font=ctk.CTkFont(family="Segoe UI", size=12), text_color="#8c909e", anchor="w")
-        self.lbl_wwise.pack(fill="x", padx=16, pady=(2, 12))
+        self.lbl_wwise.pack(fill="x", padx=16, pady=(2, 10))
 
         # Output Destination Card
         dest_card = ctk.CTkFrame(p, corner_radius=10, fg_color="#242631")
@@ -155,7 +176,7 @@ class ModernExtractorApp(ctk.CTk):
         dest_title.pack(anchor="w", padx=16, pady=(10, 4))
 
         dest_row = ctk.CTkFrame(dest_card, fg_color="transparent")
-        dest_row.pack(fill="x", padx=16, pady=(0, 12))
+        dest_row.pack(fill="x", padx=16, pady=(0, 10))
 
         dest_entry = ctk.CTkEntry(dest_row, textvariable=self.output_dir_var, font=ctk.CTkFont(family="Segoe UI", size=12), height=34)
         dest_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
@@ -167,11 +188,11 @@ class ModernExtractorApp(ctk.CTk):
 
         # Big All-in-One Button
         action_box = ctk.CTkFrame(p, fg_color="transparent")
-        action_box.pack(fill="x", padx=12, pady=16)
+        action_box.pack(fill="x", padx=12, pady=12)
 
         btn_all = ctk.CTkButton(action_box, text="⚡ EXTRACT EVERYTHING (ALL-IN-ONE)",
                                 font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
-                                fg_color="#27ae60", hover_color="#219150", height=48, corner_radius=10,
+                                fg_color="#27ae60", hover_color="#219150", height=46, corner_radius=10,
                                 command=self.start_extract_all)
         btn_all.pack(fill="x")
 
@@ -181,7 +202,6 @@ class ModernExtractorApp(ctk.CTk):
     def _build_player_tab(self):
         p = self.tab_play
 
-        # Container with 2 columns: Left (Browser) and Right (Inspector & Player)
         container = ctk.CTkFrame(p, fg_color="transparent")
         container.pack(fill="both", expand=True, padx=8, pady=8)
 
@@ -194,7 +214,6 @@ class ModernExtractorApp(ctk.CTk):
         filter_header = ctk.CTkFrame(left_pane, fg_color="transparent")
         filter_header.pack(fill="x", padx=10, pady=(10, 6))
 
-        # Category dropdown
         cat_lbl = ctk.CTkLabel(filter_header, text="Category Filter:", font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"), text_color="#8c909e")
         cat_lbl.pack(anchor="w", padx=2, pady=(0, 2))
 
@@ -204,14 +223,20 @@ class ModernExtractorApp(ctk.CTk):
                                           command=lambda _: self._update_video_list())
         self.cat_menu.pack(fill="x", pady=(0, 6))
 
-        # Search box
+        # Search box with Import Button
         search_box = ctk.CTkFrame(filter_header, fg_color="transparent")
         search_box.pack(fill="x")
 
-        search_entry = ctk.CTkEntry(search_box, textvariable=self.search_query_var, placeholder_text="🔍 Search character, quest, or file...",
+        search_entry = ctk.CTkEntry(search_box, textvariable=self.search_query_var, placeholder_text="🔍 Search video, character, quest...",
                                     font=ctk.CTkFont(family="Segoe UI", size=11), height=30)
         search_entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
         self.search_query_var.trace_add("write", lambda *_: self._update_video_list())
+
+        import_btn = ctk.CTkButton(search_box, text="📁 Import...", width=70, height=30,
+                                   font=ctk.CTkFont(family="Segoe UI", size=11),
+                                   fg_color="#2980b9", hover_color="#20638f",
+                                   command=self._import_custom_video)
+        import_btn.pack(side="right", padx=(0, 4))
 
         refresh_btn = ctk.CTkButton(search_box, text="🔄", width=30, height=30,
                                     fg_color="#2c2e38", hover_color="#383a47",
@@ -271,7 +296,7 @@ class ModernExtractorApp(ctk.CTk):
         self.lbl_meta_audio.grid(row=3, column=1, sticky="w", pady=2)
 
         # Row 5: Linked SoundBank
-        bank_title = ctk.CTkLabel(grid_frame, text="Linked Wwise Bank:", font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"), text_color="#8c909e", width=140, anchor="w")
+        bank_title = ctk.CTkLabel(grid_frame, text="Linked SoundBank:", font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"), text_color="#8c909e", width=140, anchor="w")
         bank_title.grid(row=4, column=0, sticky="w", pady=2)
         self.lbl_meta_bank = ctk.CTkLabel(grid_frame, text="-", font=ctk.CTkFont(family="Segoe UI", size=12), text_color="#9b59b6", anchor="w")
         self.lbl_meta_bank.grid(row=4, column=1, sticky="w", pady=2)
@@ -285,9 +310,17 @@ class ModernExtractorApp(ctk.CTk):
         lang_card = ctk.CTkFrame(right_pane, corner_radius=10, fg_color="#242631")
         lang_card.pack(fill="x", padx=12, pady=6)
 
-        lang_title = ctk.CTkLabel(lang_card, text="Multilingual Voice Track Selector (เลือกภาษาเสียง):",
+        lang_header = ctk.CTkFrame(lang_card, fg_color="transparent")
+        lang_header.pack(fill="x", padx=14, pady=(10, 4))
+
+        lang_title = ctk.CTkLabel(lang_header, text="Multilingual Voice Track Selector (เลือกภาษาเสียง):",
                                   font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"))
-        lang_title.pack(anchor="w", padx=14, pady=(10, 6))
+        lang_title.pack(side="left")
+
+        pick_custom_btn = ctk.CTkButton(lang_header, text="🎵 Custom Audio...", font=ctk.CTkFont(family="Segoe UI", size=11),
+                                        width=110, height=26, fg_color="#34495e", hover_color="#2c3e50",
+                                        command=self._choose_custom_audio)
+        pick_custom_btn.pack(side="right")
 
         # Segmented Button for languages
         self.lang_seg = ctk.CTkSegmentedButton(lang_card,
@@ -370,6 +403,35 @@ class ModernExtractorApp(ctk.CTk):
                 self.after(0, lambda: self.player_status_var.set(f"Rescan error: {e}"))
         threading.Thread(target=rescan, daemon=True).start()
 
+    def _import_custom_video(self):
+        """Import an external video from anywhere on disk."""
+        path = filedialog.askopenfilename(
+            title="Import Any Video File",
+            filetypes=[("Video Files", "*.mp4;*.webm;*.usm;*.bk2;*.mkv;*.avi"), ("All Files", "*.*")]
+        )
+        if path:
+            meta = self.catalog.import_custom_video(path)
+            if meta:
+                cats = ["All"] + self.catalog.get_categories()
+                self.cat_menu.configure(values=cats)
+                self.cat_filter_var.set("All")
+                self._update_video_list()
+                self._select_cutscene(meta)
+                self.player_status_var.set(f"✅ Imported custom video: {os.path.basename(path)}")
+
+    def _choose_custom_audio(self):
+        """Allow user to pick any custom audio file for the active video."""
+        path = filedialog.askopenfilename(
+            title="Select Custom Audio Track",
+            filetypes=[("Audio Files", "*.wav;*.mp3;*.ogg;*.flac;*.m4a;*.wem"), ("All Files", "*.*")]
+        )
+        if path and self.selected_cutscene:
+            self.custom_audio_override = path
+            name = os.path.basename(path)
+            size = format_size(os.path.getsize(path))
+            self.lbl_current_audio_track.configure(text=f"Custom Audio: {name} ({size}) [Selected]", text_color="#f1c40f")
+            self.player_status_var.set(f"Custom audio track assigned: {name}")
+
     def _update_video_list(self):
         """Update scrollable list based on category and search query."""
         for widget in self.video_list_frame.winfo_children():
@@ -379,13 +441,10 @@ class ModernExtractorApp(ctk.CTk):
         query = self.search_query_var.get()
         filtered = self.catalog.filter(category=category, query=query)
 
-        self.video_card_buttons = []
-
         for item in filtered:
             card = ctk.CTkFrame(self.video_list_frame, corner_radius=8, fg_color="#242631")
             card.pack(fill="x", pady=4, padx=2)
 
-            # Top row: Title and audio badge
             top_row = ctk.CTkFrame(card, fg_color="transparent")
             top_row.pack(fill="x", padx=10, pady=(8, 2))
 
@@ -393,7 +452,6 @@ class ModernExtractorApp(ctk.CTk):
                                      anchor="w", text_color="#ffffff")
             title_lbl.pack(side="left", fill="x", expand=True)
 
-            # Badge
             if item.audio_status == "native_audio":
                 badge_text = "🔊 Native"
                 badge_color = "#27ae60"
@@ -408,7 +466,6 @@ class ModernExtractorApp(ctk.CTk):
                                  fg_color=badge_color, corner_radius=4, padx=6, pady=2)
             badge.pack(side="right")
 
-            # Sub row: Details (Duration, Size, Category)
             sub_row = ctk.CTkFrame(card, fg_color="transparent")
             sub_row.pack(fill="x", padx=10, pady=(0, 6))
 
@@ -416,7 +473,6 @@ class ModernExtractorApp(ctk.CTk):
             info_lbl = ctk.CTkLabel(sub_row, text=info_text, font=ctk.CTkFont(family="Segoe UI", size=10), text_color="#8c909e", anchor="w")
             info_lbl.pack(side="left")
 
-            # Make card clickable
             def make_click_handler(meta):
                 return lambda e: self._select_cutscene(meta)
 
@@ -427,13 +483,13 @@ class ModernExtractorApp(ctk.CTk):
     def _select_cutscene(self, meta: CutsceneMetadata):
         """Display selected cutscene details in the right inspector pane."""
         self.selected_cutscene = meta
+        self.custom_audio_override = None
 
         self.insp_title_lbl.configure(text=meta.title)
         self.lbl_meta_vfs.configure(text=meta.vfs_path)
         self.lbl_meta_tag.configure(text=f"{meta.entity_tag} ({meta.category})")
         self.lbl_meta_specs.configure(text=f"{meta.resolution} | Duration: {meta.duration_str} | Size: {meta.file_size_fmt}")
         
-        # Audio status label
         if meta.audio_status == "native_audio":
             self.lbl_meta_audio.configure(text=f"Native Track Present ({meta.audio_bitrate_kbps} kb/s) - {meta.audio_description}", text_color="#2ecc71")
             self.insp_badge_lbl.configure(text="🔊 Native Audio Ready", fg_color="#27ae60")
@@ -447,9 +503,7 @@ class ModernExtractorApp(ctk.CTk):
         self.lbl_meta_bank.configure(text=meta.linked_soundbank)
         self.lbl_meta_summary.configure(text=meta.summary or f"Extracted video from {meta.rel_path}")
 
-        # Update audio track label based on selected language
         self._update_audio_selection_display()
-
         self.player_status_var.set(f"Ready: {meta.filename}\nSelect your preferred language track, then click Play or Export.")
 
     def _on_lang_segmented_change(self, value):
@@ -463,11 +517,18 @@ class ModernExtractorApp(ctk.CTk):
         }
         key = lang_map.get(value, "ja")
         self.selected_lang_var.set(key)
+        self.custom_audio_override = None
         self._update_audio_selection_display()
 
     def _update_audio_selection_display(self):
         """Update label showing which audio file will be used."""
         if not self.selected_cutscene:
+            return
+
+        if self.custom_audio_override:
+            name = os.path.basename(self.custom_audio_override)
+            size = format_size(os.path.getsize(self.custom_audio_override))
+            self.lbl_current_audio_track.configure(text=f"Custom Track: {name} ({size}) [Ready]", text_color="#f1c40f")
             return
 
         lang = self.selected_lang_var.get()
@@ -496,14 +557,14 @@ class ModernExtractorApp(ctk.CTk):
 
         meta = self.selected_cutscene
         lang = self.selected_lang_var.get()
-        audio_path = meta.mapped_tracks.get(lang) if lang != "orig" else None
+        audio_path = self.custom_audio_override or (meta.mapped_tracks.get(lang) if lang != "orig" else None)
 
         self.btn_play.configure(state="disabled", text="⏳ Muxing Audio...")
-        self.player_status_var.set(f"⚡ Muxing video '{meta.filename}' with {lang.upper()} audio track via FFmpeg...")
+        self.player_status_var.set(f"⚡ Muxing video '{meta.filename}' with selected audio track via FFmpeg...")
 
         def worker():
             t0 = time.time()
-            ok, media_path, elapsed = self.player_engine.mux_video_with_audio(meta.file_path, audio_path, lang_code=lang)
+            ok, media_path, elapsed = self.player_engine.mux_video_with_audio(meta.file_path, audio_path, lang_code=lang if not self.custom_audio_override else "custom")
             if ok:
                 self.after(0, lambda: self.player_status_var.set(f"✅ Muxed in {elapsed:.2f}s! Launching media player...\nPlaying: {os.path.basename(media_path)}"))
                 self.player_engine.play_media(media_path)
@@ -521,7 +582,7 @@ class ModernExtractorApp(ctk.CTk):
 
         meta = self.selected_cutscene
         lang = self.selected_lang_var.get()
-        audio_path = meta.mapped_tracks.get(lang) if lang != "orig" else None
+        audio_path = self.custom_audio_override or (meta.mapped_tracks.get(lang) if lang != "orig" else None)
 
         stem = os.path.splitext(meta.filename)[0]
         default_name = f"{stem}_synced_{lang}.mp4"
@@ -564,15 +625,21 @@ class ModernExtractorApp(ctk.CTk):
     def _build_videos_tab(self):
         p = self.tab_vids
 
-        desc = ctk.CTkLabel(p, text="Extract all in-game videos, cutscenes, and character skill tutorials.\nIncludes 186+ raw MP4 videos discovered inside numPath, login background videos, and 4K upscaling.",
+        desc = ctk.CTkLabel(p, text="Universal video extraction suite. Scans and pulls videos from Project Mugen / Ananta or ANY custom game folder.",
                             font=ctk.CTkFont(family="Segoe UI", size=13), text_color="#8c909e", justify="left")
         desc.pack(anchor="w", padx=16, pady=(16, 12))
 
-        btn_vids = ctk.CTkButton(p, text="🎬 Extract All Gameplay & Guide Videos (numPath 186+ Clips)",
+        btn_vids = ctk.CTkButton(p, text="🎬 Extract Ananta / Mugen Videos (numPath 186+ Clips)",
                                  font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
                                  fg_color="#2980b9", hover_color="#20638f", height=44, corner_radius=8,
                                  command=lambda: self._run_job(self._job_extract_videos))
         btn_vids.pack(fill="x", padx=16, pady=8)
+
+        btn_univ_vids = ctk.CTkButton(p, text="🌐 Universal Video Scanner (Scan ANY game or custom folder for MP4/USM/WebM/BK2)",
+                                      font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+                                      fg_color="#16a085", hover_color="#117a65", height=40, corner_radius=8,
+                                      command=self._scan_universal_videos)
+        btn_univ_vids.pack(fill="x", padx=16, pady=6)
 
         btn_login = ctk.CTkButton(p, text="🌅 Extract Login Background Video (v02_login_bg.mp4)",
                                   font=ctk.CTkFont(family="Segoe UI", size=13),
@@ -614,15 +681,21 @@ class ModernExtractorApp(ctk.CTk):
     def _build_audio_tab(self):
         p = self.tab_audi
 
-        desc = ctk.CTkLabel(p, text="Unpack Wwise SoundBanks (*.pck) and convert voice lines & background music to WAV.",
+        desc = ctk.CTkLabel(p, text="Unpack Wwise SoundBanks (*.pck, *.bnk) and convert voice lines & background music to WAV.",
                             font=ctk.CTkFont(family="Segoe UI", size=13), text_color="#8c909e", justify="left")
         desc.pack(anchor="w", padx=16, pady=(16, 12))
 
-        btn_all_audio = ctk.CTkButton(p, text="🎵 Extract All Audio (Voices + BGM + SFX)",
+        btn_all_audio = ctk.CTkButton(p, text="🎵 Extract All Ananta / Mugen Audio (Voices + BGM + SFX)",
                                       font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
                                       fg_color="#d35400", hover_color="#a04000", height=44, corner_radius=8,
                                       command=lambda: self._run_job(self._job_extract_all_audio))
         btn_all_audio.pack(fill="x", padx=16, pady=8)
+
+        btn_univ_audi = ctk.CTkButton(p, text="🌐 Universal Audio Scanner (Scan ANY game/custom folder for Wwise PCK/BNK -> WAV)",
+                                      font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+                                      fg_color="#16a085", hover_color="#117a65", height=40, corner_radius=8,
+                                      command=self._scan_universal_audio)
+        btn_univ_audi.pack(fill="x", padx=16, pady=6)
 
         sub_btns = ctk.CTkFrame(p, fg_color="transparent")
         sub_btns.pack(fill="x", padx=16, pady=6)
@@ -674,18 +747,43 @@ class ModernExtractorApp(ctk.CTk):
     # =========================================================================
     # HELPERS & SYSTEM CALLS
     # =========================================================================
+    def _browse_game_root(self):
+        """Allow user to point to ANY game folder."""
+        d = filedialog.askdirectory(initialdir=self.game_root_var.get(), title="Select Target Game Directory")
+        if d:
+            self.game_root_var.set(d)
+            self.cfg["game_root"] = d
+            
+            # Check for StreamingAssets inside selected game
+            sa_candidate = os.path.join(d, "Ananta_Data", "StreamingAssets")
+            if not os.path.exists(sa_candidate):
+                for sub in os.listdir(d):
+                    if sub.endswith("_Data"):
+                        sa_test = os.path.join(d, sub, "StreamingAssets")
+                        if os.path.exists(sa_test):
+                            sa_candidate = sa_test
+                            break
+            if not os.path.exists(sa_candidate):
+                sa_candidate = d
+
+            self.cfg["streaming_assets"] = sa_candidate
+            save_config(self.cfg)
+            self._check_environment()
+            self.log(f"[OK] Target game directory switched to: {d}")
+            messagebox.showinfo("Game Directory Updated", f"Target game directory set to:\n{d}\nStreamingAssets: {sa_candidate}")
+
     def _check_environment(self):
         gr = self.cfg.get("game_root", "")
         if os.path.exists(gr):
-            self.lbl_game.configure(text=f"Game Client:  [OK] Found at {gr}", text_color="#2ecc71")
+            self.lbl_game.configure(text=f"Target Game:  [OK] Found at {gr}", text_color="#2ecc71")
         else:
-            self.lbl_game.configure(text=f"Game Client:  [NOT FOUND]", text_color="#e67e22")
+            self.lbl_game.configure(text=f"Target Game:  [NOT FOUND]", text_color="#e67e22")
 
         corelib = self.cfg.get("corelib_dll", "")
         if os.path.exists(corelib):
             self.lbl_vfs.configure(text="Native VFS Core (CoreLib.dll):  [OK] Ready", text_color="#2ecc71")
         else:
-            self.lbl_vfs.configure(text="Native VFS Core (CoreLib.dll):  [NOT FOUND]", text_color="#e67e22")
+            self.lbl_vfs.configure(text="Native VFS Core (CoreLib.dll):  [NOT FOUND / Non-Mugen]", text_color="#e67e22")
 
         anime = self.cfg.get("animestudio_cli", "")
         if os.path.exists(anime):
@@ -748,7 +846,6 @@ class ModernExtractorApp(ctk.CTk):
                 self.after(0, lambda: self.status_var.set("Completed Successfully"))
                 self.after(0, lambda: self.status_lbl.configure(text_color="#2ecc71"))
                 self.after(0, lambda: self.progress_bar.set(1.0))
-                # Refresh player catalog after extraction
                 self.after(0, self._reload_catalog)
             except Exception as e:
                 logger.log(f"[EXCEPTION] Task failed: {e}")
@@ -758,6 +855,25 @@ class ModernExtractorApp(ctk.CTk):
                 self.is_running = False
 
         threading.Thread(target=worker, daemon=True).start()
+
+    # Universal scanner callbacks
+    def _scan_universal_videos(self):
+        folder = filedialog.askdirectory(title="Select Any Game / Folder to Scan for Videos")
+        if not folder:
+            return
+        def job(logger):
+            v = VideoExtractor(self.cfg.get("streaming_assets", folder), self.output_dir_var.get(), ffmpeg_path=self.cfg.get("ffmpeg"), logger=logger)
+            v.scan_generic_directory(folder)
+        self._run_job(job)
+
+    def _scan_universal_audio(self):
+        folder = filedialog.askdirectory(title="Select Any Game / Folder to Scan for Audio/SoundBanks")
+        if not folder:
+            return
+        def job(logger):
+            a = AudioExtractor(self.cfg.get("streaming_assets", folder), self.output_dir_var.get(), vgmstream_path=self.cfg["vgmstream"], ffmpeg_path=self.cfg.get("ffmpeg"), logger=logger)
+            a.scan_generic_directory(folder)
+        self._run_job(job)
 
     # Job implementations
     def _job_extract_videos(self, logger):
@@ -822,7 +938,7 @@ class ModernExtractorApp(ctk.CTk):
     def start_extract_all(self):
         def all_worker(logger):
             logger.log("==============================================")
-            logger.log("   STARTING ALL-IN-ONE EXTRACTION PIPELINE")
+            logger.log("   INFINITELAYGU EXTRACTOR - ALL-IN-ONE PIPELINE")
             logger.log("==============================================")
             logger.log("[STAGE 1/4] Extracting Game Videos...")
             self._job_extract_videos(logger)
@@ -838,12 +954,12 @@ class ModernExtractorApp(ctk.CTk):
             target = os.path.join(self.cfg["streaming_assets"], "Blocks")
             m.extract_all_types(target)
 
-            logger.log("\n[SUCCESS] All-in-one extraction completed successfully!")
+            logger.log("\n[SUCCESS] Universal extraction completed successfully!")
 
         self._run_job(all_worker)
 
 def main():
-    app = ModernExtractorApp()
+    app = InfiniteLayguApp()
     app.mainloop()
 
 if __name__ == "__main__":

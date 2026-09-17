@@ -188,3 +188,35 @@ class AudioExtractor:
             "categories": results,
             "output_dir": self.output_dir
         }
+
+    def scan_generic_directory(self, source_dir: str, max_per_file: int = 50) -> List[str]:
+        """
+        Universal Audio Scanner: Recursively scan ANY game directory for Wwise soundbanks (*.pck, *.bnk)
+        or embedded audio streams and convert them to standard WAV files.
+        """
+        source_dir = os.path.normpath(source_dir)
+        if not os.path.exists(source_dir):
+            self.logger.log(f"[ERROR] Audio source directory does not exist: {source_dir}")
+            return []
+
+        self.logger.log(f"[*] Starting universal audio scan in: {source_dir}...")
+        generic_out = os.path.join(self.output_dir, "generic")
+        os.makedirs(generic_out, exist_ok=True)
+
+        found_pcks = []
+        for root, _, files in os.walk(source_dir):
+            for file in files:
+                if file.lower().endswith((".pck", ".bnk", ".wem")):
+                    found_pcks.append(os.path.join(root, file))
+
+        self.logger.log(f"[*] Found {len(found_pcks)} soundbank archives in {source_dir}.")
+        all_extracted = []
+        for pck in found_pcks:
+            base_name = os.path.splitext(os.path.basename(pck))[0]
+            out_sub = os.path.join(generic_out, base_name)
+            wavs = self.extract_riff_streams_from_pck(pck, out_sub, max_files=max_per_file)
+            all_extracted.extend(wavs)
+
+        self.logger.log(f"[DONE] Universal audio scan complete! Extracted {len(all_extracted)} WAV tracks into: {generic_out}")
+        return all_extracted
+

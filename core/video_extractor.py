@@ -191,3 +191,58 @@ class VideoExtractor:
         else:
             self.logger.log(f"[ERROR] 4K upscaling failed for: {input_video}")
             return None
+
+    def scan_generic_directory(self, source_dir: str) -> List[str]:
+        """
+        Universal Video Scanner: Recursively scan ANY game folder on disk.
+        Detects MP4, CRI USM, WebM, MKV, Bink Video, and AVI by signature.
+        """
+        source_dir = os.path.normpath(source_dir)
+        if not os.path.exists(source_dir):
+            self.logger.log(f"[ERROR] Source directory does not exist: {source_dir}")
+            return []
+
+        self.logger.log(f"[*] Starting universal video scan in: {source_dir}...")
+        generic_out = os.path.join(self.output_dir, "generic")
+        os.makedirs(generic_out, exist_ok=True)
+
+        found_videos = []
+        scanned_count = 0
+
+        for root, _, files in os.walk(source_dir):
+            for file in files:
+                scanned_count += 1
+                full_src = os.path.join(root, file)
+                try:
+                    size = os.path.getsize(full_src)
+                    if size < 1024:
+                        continue
+
+                    # Read magic bytes
+                    with open(full_src, "rb") as fp:
+                        head = fp.read(64)
+
+                    is_mp4 = b"ftyp" in head
+                    is_usm = b"CRID" in head
+                    is_webm = head.startswith(b"\x1a\x45\xdf\xa3")
+                    is_bink = head.startswith(b"KB2") or head.startswith(b"BIKi")
+                    is_avi = head.startswith(b"RIFF") and b"AVI " in head[8:16]
+
+                    if not (is_mp4 or is_usm or is_webm or is_bink or is_avi):
+                        continue
+
+                    ext = ".mp4" if is_mp4 else (".usm" if is_usm else (".webm" if is_webm else (".bk2" if is_bink else ".avi")))
+                    rel = os.path.relpath(full_src, source_dir)
+                    stem = os.path.splitext(rel)[0]
+                    dest_path = os.path.join(generic_out, f"{stem}{ext}")
+
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                    shutil.copy2(full_src, dest_path)
+                    found_videos.append(dest_path)
+                    self.logger.log(f"  [+] Discovered {ext[1:].upper()}: {os.path.basename(dest_path)} ({format_size(size)})")
+                except Exception:
+                    pass
+
+        self.logger.log(f"[DONE] Universal video scan complete! Scanned {scanned_count} files, extracted {len(found_videos)} videos into: {generic_out}")
+        return found_videos
+

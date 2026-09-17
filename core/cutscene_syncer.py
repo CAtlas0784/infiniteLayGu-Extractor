@@ -404,6 +404,44 @@ class CutsceneCatalog:
             results.append(m)
         return results
 
+    def import_custom_video(self, file_path: str) -> Optional[CutsceneMetadata]:
+        """
+        Universal Video Importer: Import ANY video from disk into the catalog.
+        Probes resolution, duration, audio status, and links available audio tracks.
+        """
+        file_path = os.path.normpath(file_path)
+        if not os.path.exists(file_path):
+            return None
+
+        res, dur_str, dur_sec, a_status, a_br, a_desc = self._probe_media(file_path)
+        size_bytes = os.path.getsize(file_path)
+        filename = os.path.basename(file_path)
+
+        meta = CutsceneMetadata(
+            file_path=file_path,
+            rel_path=filename,
+            filename=filename,
+            title=f"📁 [Custom] {os.path.splitext(filename)[0]}",
+            category="📁 Custom / External Videos",
+            entity_tag="Imported Video",
+            vfs_path=file_path,
+            resolution=res,
+            duration_str=dur_str,
+            duration_sec=dur_sec,
+            file_size_bytes=size_bytes,
+            file_size_fmt=format_size(size_bytes),
+            audio_status=a_status,
+            audio_bitrate_kbps=a_br,
+            audio_description=a_desc,
+            linked_soundbank="External File / Custom Track",
+            summary=f"User-imported video from {file_path}. Ready for inspection and audio syncing."
+        )
+
+        self._assign_audio_tracks(meta)
+        # Place at top of catalog
+        self.items.insert(0, meta)
+        return meta
+
 class CutscenePlayerEngine:
     def __init__(self, output_dir: str, ffmpeg_path: Optional[str] = None, logger: Optional[ProgressLogger] = None):
         self.output_dir = os.path.normpath(output_dir)
