@@ -61,6 +61,8 @@ class DatamineExtractor:
 
         if os.path.exists(workspace_extracted):
             for tf in target_files:
+                if self.logger.is_cancelled:
+                    break
                 src = os.path.join(workspace_extracted, tf)
                 if os.path.exists(src):
                     dst = os.path.join(out_world, tf)
@@ -91,6 +93,8 @@ class DatamineExtractor:
 
         if os.path.exists(workspace_extracted):
             for tf in target_files:
+                if self.logger.is_cancelled:
+                    break
                 src = os.path.join(workspace_extracted, tf)
                 if os.path.exists(src):
                     dst = os.path.join(out_configs, tf)

@@ -1,6 +1,6 @@
 {
-  "game_root": "E:\\Ananta_beta\\Ananta",
-  "streaming_assets": "E:\\Ananta_beta\\Ananta\\Ananta_Data\\StreamingAssets",
+  "game_root": "D:/HoYoPlay/games/Star Rail Games/StarRail_Data",
+  "streaming_assets": "D:/HoYoPlay/games/Star Rail Games/StarRail_Data",
   "corelib_dll": "E:\\Ananta_beta\\Ananta\\Ananta_Data\\Plugins\\x86_64\\CoreLib.dll",
   "animestudio_cli": "c:\\Users\\Phitchayut\\Desktop\\AnimeStudio-net10\\AnimeStudio-net10-17ce5aa15fdc604cb97f680810038df9da0ba534\\AnimeStudio.CLI.exe",
   "dummy_dlls": "c:\\Users\\Phitchayut\\Desktop\\pc_dump_new\\DummyDll",

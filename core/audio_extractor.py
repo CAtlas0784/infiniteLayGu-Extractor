@@ -84,6 +84,10 @@ class AudioExtractor:
         with open(pck_path, "rb") as f:
             offset = 0
             while offset < file_size:
+                if self.logger.is_cancelled:
+                    self.logger.log(f"[CANCEL] Audio extraction halted for {base_name}.")
+                    break
+
                 f.seek(offset)
                 buf = f.read(chunk_size + overlap)
                 if not buf:
@@ -91,6 +95,9 @@ class AudioExtractor:
 
                 pos = 0
                 while True:
+                    if self.logger.is_cancelled:
+                        break
+
                     pos = buf.find(b"RIFF", pos)
                     if pos == -1 or pos + 12 > len(buf):
                         break
@@ -164,6 +171,8 @@ class AudioExtractor:
         out_sub = os.path.join(self.output_dir, category_key)
         all_wavs = []
         for pck in targets:
+            if self.logger.is_cancelled:
+                break
             wavs = self.extract_riff_streams_from_pck(pck, out_sub, max_files=max_per_file)
             all_wavs.extend(wavs)
         return all_wavs
@@ -176,6 +185,9 @@ class AudioExtractor:
         total_wavs = 0
 
         for cat, files in pck_map.items():
+            if self.logger.is_cancelled:
+                self.logger.log("[CANCEL] Audio extraction cancelled by user.")
+                break
             if files:
                 self.logger.log(f"[*] Processing category: {cat} ({len(files)} soundbank archives)...")
                 wavs = self.extract_category(cat, max_per_file=max_per_file)
@@ -205,6 +217,8 @@ class AudioExtractor:
 
         found_pcks = []
         for root, _, files in os.walk(source_dir):
+            if self.logger.is_cancelled:
+                break
             for file in files:
                 if file.lower().endswith((".pck", ".bnk", ".wem")):
                     found_pcks.append(os.path.join(root, file))
@@ -212,6 +226,9 @@ class AudioExtractor:
         self.logger.log(f"[*] Found {len(found_pcks)} soundbank archives in {source_dir}.")
         all_extracted = []
         for pck in found_pcks:
+            if self.logger.is_cancelled:
+                self.logger.log("[CANCEL] Universal audio scan stopped by user.")
+                break
             base_name = os.path.splitext(os.path.basename(pck))[0]
             out_sub = os.path.join(generic_out, base_name)
             wavs = self.extract_riff_streams_from_pck(pck, out_sub, max_files=max_per_file)

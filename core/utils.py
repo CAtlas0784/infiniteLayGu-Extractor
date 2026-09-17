@@ -43,10 +43,59 @@ def format_size(num_bytes: int) -> str:
         num_bytes /= 1024.0
     return f"{num_bytes:.1f} PB"
 
+class InterruptedJobError(Exception):
+    """Exception raised when an extraction job is cancelled by the user."""
+    pass
+
 class ProgressLogger:
-    """Simple callback logger for GUI and CLI progress updates."""
+    """Simple callback logger for GUI and CLI progress updates with cancellation support."""
     def __init__(self, callback: Optional[Callable[[str, float], None]] = None):
         self.callback = callback
+        self._cancelled = False
+        self._active_processes = []
+
+    @property
+    def is_cancelled(self) -> bool:
+        return self._cancelled
+
+    def cancel(self):
+        """Signal cancellation and terminate any active subprocesses."""
+        self._cancelled = True
+        self.log("[CANCEL] User requested to stop the current job. Halting operations...")
+        for proc in list(self._active_processes):
+            try:
+                if proc and proc.poll() is None:
+                    proc.terminate()
+                    time.sleep(0.05)
+                    if proc.poll() is None:
+                        proc.kill()
+            except Exception:
+                pass
+        self._active_processes.clear()
+
+    def register_process(self, proc):
+        """Register an active subprocess so it can be terminated on cancel."""
+        if self._cancelled:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+            raise InterruptedJobError("Task was cancelled.")
+        if proc not in self._active_processes:
+            self._active_processes.append(proc)
+
+    def unregister_process(self, proc):
+        """Unregister a finished subprocess."""
+        if proc in self._active_processes:
+            try:
+                self._active_processes.remove(proc)
+            except ValueError:
+                pass
+
+    def check_cancelled(self):
+        """Check if cancellation was requested and raise InterruptedJobError if so."""
+        if self._cancelled:
+            raise InterruptedJobError("Extraction cancelled by user.")
 
     def log(self, message: str, progress: float = -1.0):
         print(f"[{time.strftime('%H:%M:%S')}] {message}")
@@ -56,3 +105,4 @@ class ProgressLogger:
                 self.callback(message, progress)
             except Exception:
                 pass
+

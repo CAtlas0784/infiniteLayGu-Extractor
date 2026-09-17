@@ -18,7 +18,7 @@ import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from typing import Optional, List, Dict, Any
 
-from core.utils import load_config, save_config, resolve_path, format_size, ProgressLogger
+from core.utils import load_config, save_config, resolve_path, format_size, ProgressLogger, InterruptedJobError
 from core.video_extractor import VideoExtractor
 from core.audio_extractor import AudioExtractor
 from core.model_extractor import ModelExtractor
@@ -44,6 +44,9 @@ class InfiniteLayguApp(ctk.CTk):
         self.output_dir_var = ctk.StringVar(value=resolve_path(self.cfg.get("output_dir", "output")))
         self.status_var = ctk.StringVar(value="Ready")
         self.is_running = False
+        self.current_logger: Optional[ProgressLogger] = None
+        self.stop_buttons: List[ctk.CTkButton] = []
+        self.action_buttons: List[ctk.CTkButton] = []
 
         # Cutscene Player state
         self.catalog = CutsceneCatalog(self.output_dir_var.get(), ffmpeg_path=self.cfg.get("ffmpeg"))
@@ -117,6 +120,21 @@ class InfiniteLayguApp(ctk.CTk):
 
         self.status_lbl = ctk.CTkLabel(status_row, textvariable=self.status_var, font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"), text_color="#2ecc71")
         self.status_lbl.pack(side="left", padx=8)
+
+        self.btn_bottom_stop = ctk.CTkButton(
+            status_row,
+            text="⏹️ STOP EXTRACTION (หยุด)",
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            width=185,
+            height=26,
+            fg_color="#343746",
+            hover_color="#424659",
+            corner_radius=6,
+            command=self.stop_current_job,
+            state="disabled"
+        )
+        self.btn_bottom_stop.pack(side="right", padx=(8, 0))
+        self.stop_buttons.append(self.btn_bottom_stop)
 
         clear_btn = ctk.CTkButton(status_row, text="Clear Log", font=ctk.CTkFont(family="Segoe UI", size=11), width=75, height=24,
                                   fg_color="#2c2e38", hover_color="#383a47", corner_radius=6,
@@ -193,15 +211,24 @@ class InfiniteLayguApp(ctk.CTk):
                                    command=self._browse_output)
         browse_btn.pack(side="right")
 
-        # Big All-in-One Button
+        # Big All-in-One Button & STOP Button
         action_box = ctk.CTkFrame(p, fg_color="transparent")
         action_box.pack(fill="x", padx=12, pady=12)
 
-        btn_all = ctk.CTkButton(action_box, text="⚡ EXTRACT EVERYTHING (ALL-IN-ONE)",
+        self.btn_all = ctk.CTkButton(action_box, text="⚡ EXTRACT EVERYTHING (ALL-IN-ONE)",
                                 font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
                                 fg_color="#27ae60", hover_color="#219150", height=46, corner_radius=10,
                                 command=self.start_extract_all)
-        btn_all.pack(fill="x")
+        self.btn_all.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        self.action_buttons.append(self.btn_all)
+
+        self.btn_dash_stop = ctk.CTkButton(action_box, text="⏹️ STOP (หยุดการสกัด)",
+                                           font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
+                                           fg_color="#343746", hover_color="#424659", height=46, width=190, corner_radius=10,
+                                           command=self.stop_current_job,
+                                           state="disabled")
+        self.btn_dash_stop.pack(side="right")
+        self.stop_buttons.append(self.btn_dash_stop)
 
     # =========================================================================
     # TAB 2: CUTSCENE PLAYER & ASSET INSPECTOR
@@ -776,6 +803,13 @@ class InfiniteLayguApp(ctk.CTk):
                                     command=lambda: self._run_job(self._job_upscale_videos))
         btn_upscale.pack(fill="x", padx=16, pady=6)
 
+        btn_stop_v = ctk.CTkButton(p, text="⏹️ STOP RUNNING TASK (หยุดการสกัด)",
+                                   font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+                                   fg_color="#343746", hover_color="#424659", height=38, corner_radius=8,
+                                   command=self.stop_current_job, state="disabled")
+        btn_stop_v.pack(fill="x", padx=16, pady=(10, 6))
+        self.stop_buttons.append(btn_stop_v)
+
     # =========================================================================
     # TAB 4: 3D MODELS
     # =========================================================================
@@ -797,6 +831,13 @@ class InfiniteLayguApp(ctk.CTk):
                               fg_color="#34495e", hover_color="#2c3e50", height=38, corner_radius=8,
                               command=lambda: self._run_job(self._job_extract_textures))
         btn_t.pack(fill="x", padx=16, pady=6)
+
+        btn_stop_m = ctk.CTkButton(p, text="⏹️ STOP RUNNING TASK (หยุดการสกัด)",
+                                   font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+                                   fg_color="#343746", hover_color="#424659", height=38, corner_radius=8,
+                                   command=self.stop_current_job, state="disabled")
+        btn_stop_m.pack(fill="x", padx=16, pady=(10, 6))
+        self.stop_buttons.append(btn_stop_m)
 
     # =========================================================================
     # TAB 5: AUDIO & VOICES
@@ -839,6 +880,13 @@ class InfiniteLayguApp(ctk.CTk):
                       fg_color="#34495e", hover_color="#2c3e50",
                       command=lambda: self._run_job(lambda lg: self._job_extract_audio_cat("bgm_streams", lg))).pack(side="left", fill="x", expand=True, padx=4)
 
+        btn_stop_a = ctk.CTkButton(p, text="⏹️ STOP RUNNING TASK (หยุดการสกัด)",
+                                   font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+                                   fg_color="#343746", hover_color="#424659", height=38, corner_radius=8,
+                                   command=self.stop_current_job, state="disabled")
+        btn_stop_a.pack(fill="x", padx=16, pady=(10, 6))
+        self.stop_buttons.append(btn_stop_a)
+
     # =========================================================================
     # TAB 6: DATAMINE
     # =========================================================================
@@ -866,6 +914,13 @@ class InfiniteLayguApp(ctk.CTk):
                                   fg_color="#34495e", hover_color="#2c3e50", height=38, corner_radius=8,
                                   command=lambda: self._run_job(self._job_export_world))
         btn_world.pack(fill="x", padx=16, pady=6)
+
+        btn_stop_d = ctk.CTkButton(p, text="⏹️ STOP RUNNING TASK (หยุดการสกัด)",
+                                   font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+                                   fg_color="#343746", hover_color="#424659", height=38, corner_radius=8,
+                                   command=self.stop_current_job, state="disabled")
+        btn_stop_d.pack(fill="x", padx=16, pady=(10, 6))
+        self.stop_buttons.append(btn_stop_d)
 
     # =========================================================================
     # HELPERS & SYSTEM CALLS
@@ -953,7 +1008,7 @@ class InfiniteLayguApp(ctk.CTk):
 
     def _run_job(self, target_func):
         if self.is_running:
-            messagebox.showwarning("Task Busy", "An extraction job is already running! Please wait.")
+            messagebox.showwarning("Task Busy", "An extraction job is already running! Please wait or click 'STOP'.\nกำลังมีงานสกัดไฟล์ทำงานอยู่ กรุณารอหรือกดปุ่ม 'STOP'")
             return
 
         self.is_running = True
@@ -961,14 +1016,32 @@ class InfiniteLayguApp(ctk.CTk):
         self.status_lbl.configure(text_color="#e67e22")
         self.progress_bar.set(0)
 
+        # Enable all stop buttons and highlight them in red
+        for btn in self.stop_buttons:
+            try:
+                btn.configure(state="normal", fg_color="#c0392b", hover_color="#962d22", text="⏹️ STOP (หยุดการสกัด)")
+            except Exception:
+                pass
+
         logger = ProgressLogger(callback=self.log)
+        self.current_logger = logger
 
         def worker():
             try:
                 target_func(logger)
-                self.after(0, lambda: self.status_var.set("Completed Successfully"))
-                self.after(0, lambda: self.status_lbl.configure(text_color="#2ecc71"))
-                self.after(0, lambda: self.progress_bar.set(1.0))
+                if logger.is_cancelled:
+                    self.after(0, lambda: self.status_var.set("Cancelled by User"))
+                    self.after(0, lambda: self.status_lbl.configure(text_color="#e74c3c"))
+                    self.after(0, lambda: self.log("[STOPPED] Extraction was cancelled by user."))
+                else:
+                    self.after(0, lambda: self.status_var.set("Completed Successfully"))
+                    self.after(0, lambda: self.status_lbl.configure(text_color="#2ecc71"))
+                    self.after(0, lambda: self.progress_bar.set(1.0))
+                self.after(0, self._reload_catalog)
+            except InterruptedJobError:
+                self.after(0, lambda: self.status_var.set("Cancelled by User"))
+                self.after(0, lambda: self.status_lbl.configure(text_color="#e74c3c"))
+                self.after(0, lambda: self.log("[STOPPED] Extraction process aborted by user."))
                 self.after(0, self._reload_catalog)
             except Exception as e:
                 logger.log(f"[EXCEPTION] Task failed: {e}")
@@ -976,8 +1049,35 @@ class InfiniteLayguApp(ctk.CTk):
                 self.after(0, lambda: self.status_lbl.configure(text_color="#e74c3c"))
             finally:
                 self.is_running = False
+                self.current_logger = None
+                self.after(0, self._reset_stop_buttons)
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def stop_current_job(self):
+        """Immediately stop the ongoing extraction job and terminate any active subprocesses."""
+        if not self.is_running or not self.current_logger:
+            return
+
+        self.log("[!] Stop signal requested. Halting extraction processes...")
+        self.status_var.set("Stopping...")
+        self.status_lbl.configure(text_color="#e74c3c")
+
+        for btn in self.stop_buttons:
+            try:
+                btn.configure(state="disabled", fg_color="#d35400", text="⏳ Stopping...")
+            except Exception:
+                pass
+
+        self.current_logger.cancel()
+
+    def _reset_stop_buttons(self):
+        """Reset all stop buttons back to disabled state."""
+        for btn in self.stop_buttons:
+            try:
+                btn.configure(state="disabled", fg_color="#343746", hover_color="#424659", text="⏹️ STOP (หยุดการสกัด)")
+            except Exception:
+                pass
 
     # Universal scanner callbacks
     def _scan_universal_videos(self):
@@ -1065,17 +1165,21 @@ class InfiniteLayguApp(ctk.CTk):
             logger.log("==============================================")
             logger.log("[STAGE 1/4] Extracting Game Videos...")
             self._job_extract_videos(logger)
+            logger.check_cancelled()
 
             logger.log("\n[STAGE 2/4] Exporting Datamine Tables & VFS...")
             self._job_extract_datamine(logger)
+            logger.check_cancelled()
 
             logger.log("\n[STAGE 3/4] Extracting Voiceovers & BGM...")
             self._job_extract_all_audio(logger)
+            logger.check_cancelled()
 
             logger.log("\n[STAGE 4/4] Extracting 3D Models & Textures...")
             m = ModelExtractor(self.cfg["animestudio_cli"], self.cfg.get("dummy_dlls"), self.output_dir_var.get(), logger=logger)
             target = os.path.join(self.cfg["streaming_assets"], "Blocks")
             m.extract_all_types(target)
+            logger.check_cancelled()
 
             logger.log("\n[SUCCESS] Universal extraction completed successfully!")
 

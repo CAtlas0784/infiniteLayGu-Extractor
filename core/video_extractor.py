@@ -83,6 +83,10 @@ class VideoExtractor:
 
         total = len(data_files)
         for idx, src in enumerate(data_files):
+            if self.logger.is_cancelled:
+                self.logger.log("[CANCEL] Video extraction stopped by user.")
+                break
+
             file_name = os.path.basename(src)
             file_stem = os.path.splitext(file_name)[0]
             
@@ -184,12 +188,23 @@ class VideoExtractor:
             "-c:a", "copy",
             out_4k
         ]
-        res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        proc = None
+        try:
+            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.logger.register_process(proc)
+            proc.wait()
+        except Exception as e:
+            self.logger.log(f"[WARN] Upscaling interrupted: {e}")
+        finally:
+            if proc:
+                self.logger.unregister_process(proc)
+
         if os.path.exists(out_4k) and os.path.getsize(out_4k) > 0:
             self.logger.log(f"[OK] 4K Video created: {out_4k} ({format_size(os.path.getsize(out_4k))})")
             return out_4k
         else:
-            self.logger.log(f"[ERROR] 4K upscaling failed for: {input_video}")
+            if not self.logger.is_cancelled:
+                self.logger.log(f"[ERROR] 4K upscaling failed for: {input_video}")
             return None
 
     def scan_generic_directory(self, source_dir: str) -> List[str]:
@@ -210,7 +225,12 @@ class VideoExtractor:
         scanned_count = 0
 
         for root, _, files in os.walk(source_dir):
+            if self.logger.is_cancelled:
+                self.logger.log("[CANCEL] Universal video scan stopped by user.")
+                break
             for file in files:
+                if self.logger.is_cancelled:
+                    break
                 scanned_count += 1
                 full_src = os.path.join(root, file)
                 try:

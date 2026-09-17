@@ -53,6 +53,7 @@ class ModelExtractor:
         self.logger.log(f"[*] Launching AnimeStudio [{game}] on {os.path.basename(input_path)}...")
         self.logger.log(f"    Types: {types_arg} | Mode: {export_type}")
         
+        process = None
         try:
             process = subprocess.Popen(
                 cmd,
@@ -62,8 +63,13 @@ class ModelExtractor:
                 encoding='utf-8',
                 errors='replace'
             )
+            self.logger.register_process(process)
 
             for line in process.stdout:
+                if self.logger.is_cancelled:
+                    process.kill()
+                    self.logger.log("[CANCEL] AnimeStudio process terminated by user.")
+                    break
                 line_str = line.strip()
                 if line_str and ("[Info]" in line_str or "[Error]" in line_str or "[Warning]" in line_str):
                     self.logger.log(f"    {line_str}")
@@ -71,8 +77,12 @@ class ModelExtractor:
             process.wait()
             return process.returncode == 0
         except Exception as e:
-            self.logger.log(f"[ERROR] AnimeStudio execution error: {e}")
+            if not self.logger.is_cancelled:
+                self.logger.log(f"[ERROR] AnimeStudio execution error: {e}")
             return False
+        finally:
+            if process:
+                self.logger.unregister_process(process)
 
     def extract_3d_models(self, input_path: str) -> bool:
         """Extract 3D models (Mesh, GameObject, Animator, Avatar)."""
