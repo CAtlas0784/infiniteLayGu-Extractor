@@ -29,6 +29,145 @@ from core.cutscene_syncer import CutsceneCatalog, CutscenePlayerEngine, Cutscene
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
+class PurgeConfirmModal(ctk.CTkToplevel):
+    """Modal dialog displaying safety guarantees, itemized breakdown of extracted assets, and selective deletion options."""
+    def __init__(self, parent, out_dir: str, stats: dict, on_action):
+        super().__init__(parent)
+        self.title("🗑️ จัดการและลบไฟล์ที่สกัดมา (Manage Extracted Assets)")
+        self.attributes("-topmost", True)
+        self.resizable(False, False)
+        self.transient(parent)
+
+        self.out_dir = out_dir
+        self.stats = stats
+        self.on_action = on_action
+
+        # Dimensions & center position relative to parent
+        w, h = 670, 580
+        self.update_idletasks()
+        try:
+            pw = parent.winfo_width()
+            ph = parent.winfo_height()
+            px = parent.winfo_rootx()
+            py = parent.winfo_rooty()
+            x = px + max(0, (pw - w) // 2)
+            y = py + max(0, (ph - h) // 2)
+            self.geometry(f"{w}x{h}+{x}+{y}")
+        except Exception:
+            self.geometry(f"{w}x{h}")
+
+        self._build_ui()
+        self.grab_set()
+
+    def _build_ui(self):
+        container = ctk.CTkFrame(self, fg_color="transparent")
+        container.pack(fill="both", expand=True, padx=22, pady=18)
+
+        # Header
+        h_box = ctk.CTkFrame(container, fg_color="transparent")
+        h_box.pack(fill="x", pady=(0, 10))
+        t_lbl = ctk.CTkLabel(h_box, text="🗑️ จัดการและลบไฟล์ที่สกัดมา (Extracted Assets)",
+                             font=ctk.CTkFont(family="Segoe UI", size=18, weight="bold"))
+        t_lbl.pack(anchor="w")
+        sub_lbl = ctk.CTkLabel(h_box, text="ระบบลบไฟล์ที่สกัด (Extract) ออกมาเพื่อคืนพื้นที่ฮาร์ดดิสก์ให้คุณ",
+                               font=ctk.CTkFont(family="Segoe UI", size=12), text_color="#8c909e")
+        sub_lbl.pack(anchor="w")
+
+        # Green Safety Shield Banner
+        safety_box = ctk.CTkFrame(container, fg_color="#0d2b1d", border_color="#1e7e48", border_width=1, corner_radius=8)
+        safety_box.pack(fill="x", pady=(0, 12))
+        s_title = ctk.CTkLabel(safety_box, text="🛡️ ปลอดภัย 100% — โปรเจกต์และซอร์สโค้ดจะไม่ถูกลบ",
+                               font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"), text_color="#2ecc71")
+        s_title.pack(anchor="w", padx=14, pady=(8, 2))
+        s_desc = ctk.CTkLabel(safety_box,
+                              text="ระบบจะลบเฉพาะไฟล์ที่อยู่ภายในโฟลเดอร์ output/ เท่านั้น\n"
+                                   "ไฟล์ซอร์สโค้ดของโปรแกรมทั้งหมด (app.py, core/, config.json, README) จะปลอดภัย ไม่ได้รับผลกระทบใดๆ ทั้งสิ้น",
+                              font=ctk.CTkFont(family="Segoe UI", size=11), text_color="#a8d5ba", justify="left")
+        s_desc.pack(anchor="w", padx=14, pady=(0, 8))
+
+        # Target Folder Info
+        f_box = ctk.CTkFrame(container, fg_color="#181a20", corner_radius=6)
+        f_box.pack(fill="x", pady=(0, 12))
+        f_lbl = ctk.CTkLabel(f_box, text=f"📁 โฟลเดอร์เป้าหมาย:  {self.out_dir}",
+                             font=ctk.CTkFont(family="Consolas", size=11), text_color="#bdc3c7", anchor="w")
+        f_lbl.pack(fill="x", padx=12, pady=6)
+
+        # Itemized Breakdown Table
+        b_frame = ctk.CTkFrame(container, fg_color="#20232d", corner_radius=8)
+        b_frame.pack(fill="x", pady=(0, 14))
+
+        th_row = ctk.CTkFrame(b_frame, fg_color="transparent")
+        th_row.pack(fill="x", padx=14, pady=(8, 4))
+        ctk.CTkLabel(th_row, text="หมวดหมู่ไฟล์ที่สกัดมา", font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"), text_color="#95a5a6").pack(side="left")
+        ctk.CTkLabel(th_row, text="จำนวนไฟล์ / ขนาด", font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"), text_color="#95a5a6").pack(side="right")
+
+        def add_item_row(label, count, size_fmt, note=""):
+            row = ctk.CTkFrame(b_frame, fg_color="transparent")
+            row.pack(fill="x", padx=14, pady=3)
+            txt = f"{label}  ({note})" if note else label
+            ctk.CTkLabel(row, text=txt, font=ctk.CTkFont(family="Segoe UI", size=12), text_color="#ecf0f1").pack(side="left")
+            ctk.CTkLabel(row, text=f"{count:,} ไฟล์  |  {size_fmt}", font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"), text_color="#3498db").pack(side="right")
+
+        add_item_row("🌐 วิดีโอ Generic", self.stats["generic"]["cnt"], self.stats["generic"]["fmt"], "Star Rail / เกมอื่นๆ ที่สแกน")
+        add_item_row("🎬 วิดีโอคัตซีน Ananta", self.stats["ananta"]["cnt"], self.stats["ananta"]["fmt"], "Gameplay, Guides & Login")
+        add_item_row("🎵 ไฟล์เสียง Wwise", self.stats["audio"]["cnt"], self.stats["audio"]["fmt"], "Voiceovers & BGM")
+
+        misc_cnt = self.stats["models"]["cnt"] + self.stats["datamine"]["cnt"]
+        misc_sz = self.stats["models"]["sz"] + self.stats["datamine"]["sz"]
+        add_item_row("📦 โมเดล 3D & Datamine", misc_cnt, format_size(misc_sz), "Tables & Manifests")
+
+        # Divider
+        div = ctk.CTkFrame(b_frame, fg_color="#353b48", height=1)
+        div.pack(fill="x", padx=14, pady=6)
+
+        # Total Row
+        tot_row = ctk.CTkFrame(b_frame, fg_color="transparent")
+        tot_row.pack(fill="x", padx=14, pady=(2, 10))
+        ctk.CTkLabel(tot_row, text="📊 รวมทั้งหมดในโฟลเดอร์ output:", font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"), text_color="#f1c40f").pack(side="left")
+        ctk.CTkLabel(tot_row, text=f"{self.stats['total']['cnt']:,} ไฟล์  |  {self.stats['total']['fmt']}",
+                     font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"), text_color="#f1c40f").pack(side="right")
+
+        # Action Buttons Box
+        btn_box = ctk.CTkFrame(container, fg_color="transparent")
+        btn_box.pack(fill="x", side="bottom")
+
+        if self.stats["generic"]["cnt"] > 0:
+            # Option 1: Generic only
+            btn_gen = ctk.CTkButton(
+                btn_box,
+                text=f"🗑️ ลบเฉพาะไฟล์ Generic (Star Rail ฯลฯ คืนพื้นที่ {self.stats['generic']['fmt']})",
+                font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+                fg_color="#d35400", hover_color="#b94a00", height=38, corner_radius=8,
+                command=lambda: self._choose("generic")
+            )
+            btn_gen.pack(fill="x", pady=(0, 6))
+
+        # Option 2: All
+        btn_all = ctk.CTkButton(
+            btn_box,
+            text=f"💥 ล้างไฟล์ทั้งหมดใน output/ ({self.stats['total']['fmt']})",
+            font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+            fg_color="#c0392b", hover_color="#962d22", height=38, corner_radius=8,
+            command=lambda: self._choose("all")
+        )
+        btn_all.pack(fill="x", pady=(0, 6))
+
+        # Cancel
+        btn_cancel = ctk.CTkButton(
+            btn_box,
+            text="❌ ยกเลิก (ไม่ลบอะไรทั้งสิ้น)",
+            font=ctk.CTkFont(family="Segoe UI", size=12),
+            fg_color="#343746", hover_color="#424659", height=34, corner_radius=8,
+            command=lambda: self._choose("cancel")
+        )
+        btn_cancel.pack(fill="x")
+
+    def _choose(self, action: str):
+        self.destroy()
+        if self.on_action:
+            self.on_action(action)
+
+
 class InfiniteLayguApp(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -998,13 +1137,115 @@ class InfiniteLayguApp(ctk.CTk):
         else:
             subprocess.run(["open" if sys.platform == "darwin" else "xdg-open", out])
 
+    def _calc_output_stats(self, out_dir: str) -> dict:
+        """Scan output folder subdirectories to gather file counts and disk usage."""
+        def get_dir_stats(path):
+            if not os.path.exists(path):
+                return 0, 0
+            cnt = 0
+            sz = 0
+            for r, d, files in os.walk(path):
+                for f in files:
+                    cnt += 1
+                    try:
+                        sz += os.path.getsize(os.path.join(r, f))
+                    except Exception:
+                        pass
+            return cnt, sz
+
+        g_cnt, g_sz = get_dir_stats(os.path.join(out_dir, "videos", "generic"))
+        a_v_cnt, a_v_sz = 0, 0
+        for sub in ["gameplay_and_guides", "login"]:
+            c, s = get_dir_stats(os.path.join(out_dir, "videos", sub))
+            a_v_cnt += c
+            a_v_sz += s
+
+        aud_cnt, aud_sz = get_dir_stats(os.path.join(out_dir, "audio"))
+        mod_cnt, mod_sz = get_dir_stats(os.path.join(out_dir, "models_and_textures"))
+        dat_cnt, dat_sz = get_dir_stats(os.path.join(out_dir, "datamine"))
+        tot_cnt, tot_sz = get_dir_stats(out_dir)
+
+        return {
+            "generic": {"cnt": g_cnt, "sz": g_sz, "fmt": format_size(g_sz)},
+            "ananta": {"cnt": a_v_cnt, "sz": a_v_sz, "fmt": format_size(a_v_sz)},
+            "audio": {"cnt": aud_cnt, "sz": aud_sz, "fmt": format_size(aud_sz)},
+            "models": {"cnt": mod_cnt, "sz": mod_sz, "fmt": format_size(mod_sz)},
+            "datamine": {"cnt": dat_cnt, "sz": dat_sz, "fmt": format_size(dat_sz)},
+            "total": {"cnt": tot_cnt, "sz": tot_sz, "fmt": format_size(tot_sz)},
+        }
+
+    def _execute_purge_generic(self, out_dir: str, gen_stats: dict):
+        """Purge only generic scanned videos (e.g. Star Rail or other games), keeping Ananta videos intact."""
+        gen_dir = os.path.join(out_dir, "videos", "generic")
+        self.log(f"[*] Deleting generic scanned videos in: {gen_dir} ...")
+        if os.path.exists(gen_dir):
+            shutil.rmtree(gen_dir, ignore_errors=True)
+
+        cache_dir = os.path.join(out_dir, "videos", ".player_cache")
+        if os.path.exists(cache_dir):
+            shutil.rmtree(cache_dir, ignore_errors=True)
+
+        self.catalog = CutsceneCatalog(out_dir, ffmpeg_path=self.cfg.get("ffmpeg"))
+        self.player_engine = CutscenePlayerEngine(out_dir, ffmpeg_path=self.cfg.get("ffmpeg"))
+        self._reload_catalog()
+
+        freed_str = gen_stats["fmt"]
+        cnt = gen_stats["cnt"]
+        self.log(f"[CLEANED] Successfully deleted generic extracted assets! Freed {freed_str} ({cnt:,} files).")
+        self.status_var.set(f"Deleted generic assets ({freed_str} freed)")
+        self.status_lbl.configure(text_color="#2ecc71")
+        self.progress_bar.set(0)
+
+        messagebox.showinfo(
+            "Purge Complete / ลบไฟล์สำเร็จ",
+            f"✅ ลบไฟล์ Generic (Star Rail / เกมอื่นๆ) เรียบร้อยแล้ว!\n\n"
+            f"คืนพื้นที่: {freed_str}\n"
+            f"จำนวนไฟล์ที่ลบ: {cnt:,} รายการ\n\n"
+            f"🎬 ไฟล์คัตซีนเกม Ananta ทั้งหมดยังคงอยู่ครบถ้วน!"
+        )
+
+    def _execute_purge_all(self, out_dir: str, tot_stats: dict):
+        """Purge all extracted assets inside the output directory."""
+        self.log(f"[*] Purging all extracted assets in: {out_dir} ...")
+
+        for item in os.listdir(out_dir):
+            item_path = os.path.join(out_dir, item)
+            try:
+                if os.path.isdir(item_path):
+                    shutil.rmtree(item_path, ignore_errors=True)
+                else:
+                    os.remove(item_path)
+            except Exception as e:
+                self.log(f"[WARN] Failed to delete {item}: {e}")
+
+        # Ensure empty output directory still exists
+        os.makedirs(out_dir, exist_ok=True)
+
+        self.catalog = CutsceneCatalog(out_dir, ffmpeg_path=self.cfg.get("ffmpeg"))
+        self.player_engine = CutscenePlayerEngine(out_dir, ffmpeg_path=self.cfg.get("ffmpeg"))
+        self._reload_catalog()
+
+        freed_str = tot_stats["fmt"]
+        cnt = tot_stats["cnt"]
+        self.log(f"[CLEANED] Successfully purged all extracted assets! Cleared {cnt:,} files ({freed_str}).")
+        self.status_var.set(f"Deleted {cnt:,} extracted files ({freed_str} freed)")
+        self.status_lbl.configure(text_color="#2ecc71")
+        self.progress_bar.set(0)
+
+        messagebox.showinfo(
+            "Purge Complete / ลบไฟล์สำเร็จ",
+            f"✅ ลบสิ่งที่สกัดมาทั้งหมดเรียบร้อยแล้ว!\n\n"
+            f"คืนพื้นที่: {freed_str}\n"
+            f"จำนวนไฟล์ที่ลบ: {cnt:,} รายการ"
+        )
+
     def purge_extracted_assets(self):
-        """One-click delete all extracted assets inside the output directory."""
+        """One-click manage and purge extracted assets inside the output directory."""
         if self.is_running:
             messagebox.showwarning("Task Busy", "An extraction job is currently running! Please stop it before deleting assets.\nกำลังมีงานสกัดไฟล์ทำงานอยู่ กรุณากดหยุดก่อนลบไฟล์")
             return
 
-        out_dir = os.path.normpath(self.output_dir_var.get())
+        out_dir = os.path.normpath(resolve_path(self.output_dir_var.get()))
         if not os.path.exists(out_dir):
             messagebox.showinfo("Directory Empty", f"Output folder does not exist:\n{out_dir}\nยังไม่มีโฟลเดอร์ผลลัพธ์")
             return
@@ -1022,65 +1263,18 @@ class InfiniteLayguApp(ctk.CTk):
             messagebox.showerror("Action Prohibited", f"Safety Protection: Cannot purge root system or user directory:\n{out_dir}")
             return
 
-        # Count files and total size
-        total_files = 0
-        total_size = 0
-        for root, dirs, files in os.walk(out_dir):
-            for f in files:
-                total_files += 1
-                try:
-                    total_size += os.path.getsize(os.path.join(root, f))
-                except Exception:
-                    pass
-
-        if total_files == 0:
+        stats = self._calc_output_stats(out_dir)
+        if stats["total"]["cnt"] == 0:
             messagebox.showinfo("No Files", f"No extracted assets found in:\n{out_dir}\nไม่มีไฟล์ที่ต้องลบในโฟลเดอร์นี้")
             return
 
-        formatted_size = format_size(total_size)
-        confirm = messagebox.askyesno(
-            "Confirm Delete / ยืนยันการลบ",
-            f"Are you sure you want to permanently delete ALL extracted assets?\n\n"
-            f"📁 Target Folder: {out_dir}\n"
-            f"📊 Total Files: {total_files} files ({formatted_size})\n\n"
-            f"⚠️ คุณต้องการลบไฟล์และโฟลเดอร์ที่สกัดมาทั้งหมดหรือไม่?\n(การกระทำนี้ไม่สามารถย้อนกลับได้)",
-            icon="warning"
-        )
-        if not confirm:
-            return
+        def handle_action(action: str):
+            if action == "generic":
+                self._execute_purge_generic(out_dir, stats["generic"])
+            elif action == "all":
+                self._execute_purge_all(out_dir, stats["total"])
 
-        self.log(f"[*] Purging extracted assets in: {out_dir} ...")
-
-        # Delete all items inside output folder
-        for item in os.listdir(out_dir):
-            item_path = os.path.join(out_dir, item)
-            try:
-                if os.path.isdir(item_path):
-                    shutil.rmtree(item_path, ignore_errors=True)
-                else:
-                    os.remove(item_path)
-            except Exception as e:
-                self.log(f"[WARN] Failed to delete {item}: {e}")
-
-        # Ensure empty output directory still exists
-        os.makedirs(out_dir, exist_ok=True)
-
-        # Reset cutscene catalog and player
-        self.catalog = CutsceneCatalog(out_dir, ffmpeg_path=self.cfg.get("ffmpeg"))
-        self.player_engine = CutscenePlayerEngine(out_dir, ffmpeg_path=self.cfg.get("ffmpeg"))
-        self._reload_catalog()
-
-        self.log(f"[CLEANED] Successfully purged all extracted assets! Cleared {total_files} files ({formatted_size}).")
-        self.status_var.set(f"Deleted {total_files} extracted files ({formatted_size} freed)")
-        self.status_lbl.configure(text_color="#2ecc71")
-        self.progress_bar.set(0)
-
-        messagebox.showinfo(
-            "Purge Complete / ลบไฟล์สำเร็จ",
-            f"✅ ลบสิ่งที่สกัดมาทั้งหมดเรียบร้อยแล้ว!\n\n"
-            f"คืนพื้นที่: {formatted_size}\n"
-            f"จำนวนไฟล์ที่ลบ: {total_files} รายการ"
-        )
+        PurgeConfirmModal(self, out_dir, stats, handle_action)
 
     def log(self, message: str, progress: float = -1.0):
         self.after(0, self._append_log, message, progress)
