@@ -85,6 +85,11 @@ class InfiniteLayguApp(ctk.CTk):
         btn_box = ctk.CTkFrame(header, fg_color="transparent")
         btn_box.pack(side="right", padx=16, pady=14)
 
+        purge_btn = ctk.CTkButton(btn_box, text="🗑️ Delete Extracted Assets (ลบทั้งหมด)", font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+                                  fg_color="#c0392b", hover_color="#962d22", height=36, corner_radius=8,
+                                  command=self.purge_extracted_assets)
+        purge_btn.pack(side="right", padx=6)
+
         open_btn = ctk.CTkButton(btn_box, text="📂 Open Output Folder", font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
                                  fg_color="#2b5c8f", hover_color="#1f4268", height=36, corner_radius=8,
                                  command=self.open_output_folder)
@@ -206,7 +211,12 @@ class InfiniteLayguApp(ctk.CTk):
         dest_entry = ctk.CTkEntry(dest_row, textvariable=self.output_dir_var, font=ctk.CTkFont(family="Segoe UI", size=12), height=34)
         dest_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
 
-        browse_btn = ctk.CTkButton(dest_row, text="Browse...", font=ctk.CTkFont(family="Segoe UI", size=12), width=100, height=34,
+        purge_btn = ctk.CTkButton(dest_row, text="🗑️ Clear / Purge Extracted...", font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+                                  fg_color="#c0392b", hover_color="#962d22", width=180, height=34,
+                                  command=self.purge_extracted_assets)
+        purge_btn.pack(side="right", padx=(8, 0))
+
+        browse_btn = ctk.CTkButton(dest_row, text="Browse...", font=ctk.CTkFont(family="Segoe UI", size=12), width=90, height=34,
                                    fg_color="#343746", hover_color="#424659",
                                    command=self._browse_output)
         browse_btn.pack(side="right")
@@ -775,27 +785,21 @@ class InfiniteLayguApp(ctk.CTk):
     def _build_videos_tab(self):
         p = self.tab_vids
 
-        desc = ctk.CTkLabel(p, text="Universal video extraction suite. Scans and pulls videos from Project Mugen / Ananta or ANY custom game folder.",
+        desc = ctk.CTkLabel(p, text="Universal video extraction suite. Scans and pulls embedded videos (MP4, USM, WebM, BK2, MKV, AVI) from the target game or any custom folder.",
                             font=ctk.CTkFont(family="Segoe UI", size=13), text_color="#8c909e", justify="left")
         desc.pack(anchor="w", padx=16, pady=(16, 12))
 
-        btn_vids = ctk.CTkButton(p, text="🎬 Extract Ananta / Mugen Videos (numPath 186+ Clips)",
+        btn_vids = ctk.CTkButton(p, text="🎬 Extract All Videos from Target Game (สแกนและดึงวิดีโอจากเกมที่เลือก)",
                                  font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
                                  fg_color="#2980b9", hover_color="#20638f", height=44, corner_radius=8,
                                  command=lambda: self._run_job(self._job_extract_videos))
         btn_vids.pack(fill="x", padx=16, pady=8)
 
-        btn_univ_vids = ctk.CTkButton(p, text="🌐 Universal Video Scanner (Scan ANY game or custom folder for MP4/USM/WebM/BK2)",
+        btn_univ_vids = ctk.CTkButton(p, text="🌐 Scan Custom Directory for Videos... (เลือกโฟลเดอร์อื่นเพื่อสแกนวิดีโอ)",
                                       font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
                                       fg_color="#16a085", hover_color="#117a65", height=40, corner_radius=8,
                                       command=self._scan_universal_videos)
         btn_univ_vids.pack(fill="x", padx=16, pady=6)
-
-        btn_login = ctk.CTkButton(p, text="🌅 Extract Login Background Video (v02_login_bg.mp4)",
-                                  font=ctk.CTkFont(family="Segoe UI", size=13),
-                                  fg_color="#34495e", hover_color="#2c3e50", height=38, corner_radius=8,
-                                  command=lambda: self._run_job(self._job_extract_login_video))
-        btn_login.pack(fill="x", padx=16, pady=6)
 
         btn_upscale = ctk.CTkButton(p, text="✨ Upscale Extracted Videos to 4K UHD (3840x2160 Lanczos via FFmpeg)",
                                     font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
@@ -845,17 +849,17 @@ class InfiniteLayguApp(ctk.CTk):
     def _build_audio_tab(self):
         p = self.tab_audi
 
-        desc = ctk.CTkLabel(p, text="Unpack Wwise SoundBanks (*.pck, *.bnk) and convert voice lines & background music to WAV.",
+        desc = ctk.CTkLabel(p, text="Universal audio suite. Unpacks Wwise SoundBanks (*.pck, *.bnk) and converts voice lines & music to standard WAV.",
                             font=ctk.CTkFont(family="Segoe UI", size=13), text_color="#8c909e", justify="left")
         desc.pack(anchor="w", padx=16, pady=(16, 12))
 
-        btn_all_audio = ctk.CTkButton(p, text="🎵 Extract All Ananta / Mugen Audio (Voices + BGM + SFX)",
+        btn_all_audio = ctk.CTkButton(p, text="🎵 Extract All Audio from Target Game (สแกนและแปลงเสียงทั้งหมดจากเกมที่เลือก)",
                                       font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
                                       fg_color="#d35400", hover_color="#a04000", height=44, corner_radius=8,
                                       command=lambda: self._run_job(self._job_extract_all_audio))
         btn_all_audio.pack(fill="x", padx=16, pady=8)
 
-        btn_univ_audi = ctk.CTkButton(p, text="🌐 Universal Audio Scanner (Scan ANY game/custom folder for Wwise PCK/BNK -> WAV)",
+        btn_univ_audi = ctk.CTkButton(p, text="🌐 Scan Custom Directory for Audio... (เลือกโฟลเดอร์อื่นเพื่อสแกน Wwise / PCK / BNK)",
                                       font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
                                       fg_color="#16a085", hover_color="#117a65", height=40, corner_radius=8,
                                       command=self._scan_universal_audio)
@@ -903,7 +907,7 @@ class InfiniteLayguApp(ctk.CTk):
                                      command=lambda: self._run_job(self._job_extract_datamine))
         btn_all_data.pack(fill="x", padx=16, pady=8)
 
-        btn_vfs = ctk.CTkButton(p, text="📋 Dump Native VFS Manifest (227,378 Files via CoreLib.dll)",
+        btn_vfs = ctk.CTkButton(p, text="📋 Dump Native Game VFS Manifest (CoreLib Engine)",
                                 font=ctk.CTkFont(family="Segoe UI", size=13),
                                 fg_color="#34495e", hover_color="#2c3e50", height=38, corner_radius=8,
                                 command=lambda: self._run_job(self._job_dump_vfs))
@@ -993,6 +997,90 @@ class InfiniteLayguApp(ctk.CTk):
             os.startfile(out)
         else:
             subprocess.run(["open" if sys.platform == "darwin" else "xdg-open", out])
+
+    def purge_extracted_assets(self):
+        """One-click delete all extracted assets inside the output directory."""
+        if self.is_running:
+            messagebox.showwarning("Task Busy", "An extraction job is currently running! Please stop it before deleting assets.\nกำลังมีงานสกัดไฟล์ทำงานอยู่ กรุณากดหยุดก่อนลบไฟล์")
+            return
+
+        out_dir = os.path.normpath(self.output_dir_var.get())
+        if not os.path.exists(out_dir):
+            messagebox.showinfo("Directory Empty", f"Output folder does not exist:\n{out_dir}\nยังไม่มีโฟลเดอร์ผลลัพธ์")
+            return
+
+        # Safety check: prevent accidental deletion of critical system or user root directories!
+        prohibited_roots = [
+            os.path.normpath("C:\\"), os.path.normpath("D:\\"), os.path.normpath("E:\\"),
+            os.path.normpath(os.environ.get("SystemRoot", "C:\\Windows")),
+            os.path.normpath(os.path.expanduser("~")),
+            os.path.normpath(os.path.join(os.path.expanduser("~"), "Desktop")),
+            os.path.normpath(os.path.join(os.path.expanduser("~"), "Documents")),
+            os.path.normpath(os.path.join(os.path.expanduser("~"), "Downloads")),
+        ]
+        if out_dir in prohibited_roots:
+            messagebox.showerror("Action Prohibited", f"Safety Protection: Cannot purge root system or user directory:\n{out_dir}")
+            return
+
+        # Count files and total size
+        total_files = 0
+        total_size = 0
+        for root, dirs, files in os.walk(out_dir):
+            for f in files:
+                total_files += 1
+                try:
+                    total_size += os.path.getsize(os.path.join(root, f))
+                except Exception:
+                    pass
+
+        if total_files == 0:
+            messagebox.showinfo("No Files", f"No extracted assets found in:\n{out_dir}\nไม่มีไฟล์ที่ต้องลบในโฟลเดอร์นี้")
+            return
+
+        formatted_size = format_size(total_size)
+        confirm = messagebox.askyesno(
+            "Confirm Delete / ยืนยันการลบ",
+            f"Are you sure you want to permanently delete ALL extracted assets?\n\n"
+            f"📁 Target Folder: {out_dir}\n"
+            f"📊 Total Files: {total_files} files ({formatted_size})\n\n"
+            f"⚠️ คุณต้องการลบไฟล์และโฟลเดอร์ที่สกัดมาทั้งหมดหรือไม่?\n(การกระทำนี้ไม่สามารถย้อนกลับได้)",
+            icon="warning"
+        )
+        if not confirm:
+            return
+
+        self.log(f"[*] Purging extracted assets in: {out_dir} ...")
+
+        # Delete all items inside output folder
+        for item in os.listdir(out_dir):
+            item_path = os.path.join(out_dir, item)
+            try:
+                if os.path.isdir(item_path):
+                    shutil.rmtree(item_path, ignore_errors=True)
+                else:
+                    os.remove(item_path)
+            except Exception as e:
+                self.log(f"[WARN] Failed to delete {item}: {e}")
+
+        # Ensure empty output directory still exists
+        os.makedirs(out_dir, exist_ok=True)
+
+        # Reset cutscene catalog and player
+        self.catalog = CutsceneCatalog(out_dir, ffmpeg_path=self.cfg.get("ffmpeg"))
+        self.player_engine = CutscenePlayerEngine(out_dir, ffmpeg_path=self.cfg.get("ffmpeg"))
+        self._reload_catalog()
+
+        self.log(f"[CLEANED] Successfully purged all extracted assets! Cleared {total_files} files ({formatted_size}).")
+        self.status_var.set(f"Deleted {total_files} extracted files ({formatted_size} freed)")
+        self.status_lbl.configure(text_color="#2ecc71")
+        self.progress_bar.set(0)
+
+        messagebox.showinfo(
+            "Purge Complete / ลบไฟล์สำเร็จ",
+            f"✅ ลบสิ่งที่สกัดมาทั้งหมดเรียบร้อยแล้ว!\n\n"
+            f"คืนพื้นที่: {formatted_size}\n"
+            f"จำนวนไฟล์ที่ลบ: {total_files} รายการ"
+        )
 
     def log(self, message: str, progress: float = -1.0):
         self.after(0, self._append_log, message, progress)
@@ -1100,15 +1188,19 @@ class InfiniteLayguApp(ctk.CTk):
 
     # Job implementations
     def _job_extract_videos(self, logger):
-        v = VideoExtractor(self.cfg["streaming_assets"], self.output_dir_var.get(), ffmpeg_path=self.cfg.get("ffmpeg"), logger=logger)
-        v.extract_all()
-
-    def _job_extract_login_video(self, logger):
-        v = VideoExtractor(self.cfg["streaming_assets"], self.output_dir_var.get(), ffmpeg_path=self.cfg.get("ffmpeg"), logger=logger)
-        v.extract_login_video()
+        target = self.cfg.get("streaming_assets") or self.game_root_var.get()
+        v = VideoExtractor(target, self.output_dir_var.get(), ffmpeg_path=self.cfg.get("ffmpeg"), logger=logger)
+        numpath = os.path.join(target, "numPath")
+        if os.path.exists(numpath):
+            v.extract_all()
+        else:
+            game_folder = self.game_root_var.get() or target
+            logger.log(f"[*] Auto-scanning target game folder for videos: {game_folder}...")
+            v.scan_generic_directory(game_folder)
 
     def _job_upscale_videos(self, logger):
-        v = VideoExtractor(self.cfg["streaming_assets"], self.output_dir_var.get(), ffmpeg_path=self.cfg.get("ffmpeg"), logger=logger)
+        target = self.cfg.get("streaming_assets") or self.game_root_var.get()
+        v = VideoExtractor(target, self.output_dir_var.get(), ffmpeg_path=self.cfg.get("ffmpeg"), logger=logger)
         vid_dir = os.path.join(self.output_dir_var.get(), "videos")
         login_v = os.path.join(vid_dir, "login", "v02_login_bg.mp4")
         if os.path.exists(login_v):
@@ -1130,32 +1222,57 @@ class InfiniteLayguApp(ctk.CTk):
 
     def _job_extract_models(self, logger):
         m = ModelExtractor(self.cfg["animestudio_cli"], self.cfg.get("dummy_dlls"), self.output_dir_var.get(), logger=logger)
-        target = os.path.join(self.cfg["streaming_assets"], "Blocks")
+        target = os.path.join(self.cfg.get("streaming_assets", self.game_root_var.get()), "Blocks")
+        if not os.path.exists(target):
+            target = self.game_root_var.get()
         m.extract_3d_models(target)
 
     def _job_extract_textures(self, logger):
         m = ModelExtractor(self.cfg["animestudio_cli"], self.cfg.get("dummy_dlls"), self.output_dir_var.get(), logger=logger)
-        target = os.path.join(self.cfg["streaming_assets"], "Blocks")
+        target = os.path.join(self.cfg.get("streaming_assets", self.game_root_var.get()), "Blocks")
+        if not os.path.exists(target):
+            target = self.game_root_var.get()
         m.extract_textures(target)
 
     def _job_extract_all_audio(self, logger):
-        a = AudioExtractor(self.cfg["streaming_assets"], self.output_dir_var.get(), vgmstream_path=self.cfg["vgmstream"], ffmpeg_path=self.cfg.get("ffmpeg"), logger=logger)
-        a.extract_all()
+        target = self.cfg.get("streaming_assets") or self.game_root_var.get()
+        a = AudioExtractor(target, self.output_dir_var.get(), vgmstream_path=self.cfg["vgmstream"], ffmpeg_path=self.cfg.get("ffmpeg"), logger=logger)
+        pck_map = a.find_pck_files()
+        has_pcks = any(len(files) > 0 for files in pck_map.values())
+        if has_pcks:
+            a.extract_all()
+        else:
+            game_folder = self.game_root_var.get() or target
+            logger.log(f"[*] Scanning target game folder for Wwise audio archives (.pck, .bnk, .wem): {game_folder}...")
+            a.scan_generic_directory(game_folder)
 
     def _job_extract_audio_cat(self, cat, logger):
-        a = AudioExtractor(self.cfg["streaming_assets"], self.output_dir_var.get(), vgmstream_path=self.cfg["vgmstream"], ffmpeg_path=self.cfg.get("ffmpeg"), logger=logger)
+        target = self.cfg.get("streaming_assets") or self.game_root_var.get()
+        a = AudioExtractor(target, self.output_dir_var.get(), vgmstream_path=self.cfg["vgmstream"], ffmpeg_path=self.cfg.get("ffmpeg"), logger=logger)
         a.extract_category(cat)
 
     def _job_extract_datamine(self, logger):
-        d = DatamineExtractor(self.cfg["streaming_assets"], self.cfg["corelib_dll"], self.output_dir_var.get(), logger=logger)
-        d.export_all()
+        target = self.cfg.get("streaming_assets") or self.game_root_var.get()
+        corelib = self.cfg.get("corelib_dll", "")
+        if os.path.exists(corelib):
+            d = DatamineExtractor(target, corelib, self.output_dir_var.get(), logger=logger)
+            d.export_all()
+        else:
+            logger.log("[SKIP] CoreLib native bridge not present for this game engine. Skipping VFS dump.")
 
     def _job_dump_vfs(self, logger):
-        d = DatamineExtractor(self.cfg["streaming_assets"], self.cfg["corelib_dll"], self.output_dir_var.get(), logger=logger)
-        d.dump_vfs_manifest()
+        target = self.cfg.get("streaming_assets") or self.game_root_var.get()
+        corelib = self.cfg.get("corelib_dll", "")
+        if os.path.exists(corelib):
+            d = DatamineExtractor(target, corelib, self.output_dir_var.get(), logger=logger)
+            d.dump_vfs_manifest()
+        else:
+            logger.log("[SKIP] CoreLib.dll not found. Native VFS dumping is only applicable for games with CoreLib.")
 
     def _job_export_world(self, logger):
-        d = DatamineExtractor(self.cfg["streaming_assets"], self.cfg["corelib_dll"], self.output_dir_var.get(), logger=logger)
+        target = self.cfg.get("streaming_assets") or self.game_root_var.get()
+        corelib = self.cfg.get("corelib_dll", "")
+        d = DatamineExtractor(target, corelib, self.output_dir_var.get(), logger=logger)
         d.export_world_data()
 
     def start_extract_all(self):
@@ -1167,18 +1284,28 @@ class InfiniteLayguApp(ctk.CTk):
             self._job_extract_videos(logger)
             logger.check_cancelled()
 
-            logger.log("\n[STAGE 2/4] Exporting Datamine Tables & VFS...")
-            self._job_extract_datamine(logger)
-            logger.check_cancelled()
-
-            logger.log("\n[STAGE 3/4] Extracting Voiceovers & BGM...")
+            logger.log("\n[STAGE 2/4] Extracting Voiceovers & BGM...")
             self._job_extract_all_audio(logger)
             logger.check_cancelled()
 
-            logger.log("\n[STAGE 4/4] Extracting 3D Models & Textures...")
-            m = ModelExtractor(self.cfg["animestudio_cli"], self.cfg.get("dummy_dlls"), self.output_dir_var.get(), logger=logger)
-            target = os.path.join(self.cfg["streaming_assets"], "Blocks")
-            m.extract_all_types(target)
+            logger.log("\n[STAGE 3/4] Extracting 3D Models & Textures...")
+            animestudio = self.cfg.get("animestudio_cli", "")
+            if os.path.exists(animestudio):
+                target_sa = self.cfg.get("streaming_assets") or self.game_root_var.get()
+                blocks_path = os.path.join(target_sa, "Blocks")
+                m = ModelExtractor(animestudio, self.cfg.get("dummy_dlls"), self.output_dir_var.get(), logger=logger)
+                target = blocks_path if os.path.exists(blocks_path) else target_sa
+                m.extract_all_types(target)
+            else:
+                logger.log("[SKIP] AnimeStudio engine not found. Skipping 3D models.")
+            logger.check_cancelled()
+
+            corelib = self.cfg.get("corelib_dll", "")
+            if os.path.exists(corelib):
+                logger.log("\n[STAGE 4/4] Exporting Datamine Tables & VFS...")
+                self._job_extract_datamine(logger)
+            else:
+                logger.log("\n[STAGE 4/4] Datamine manifest not applicable for current game engine (Skipped).")
             logger.check_cancelled()
 
             logger.log("\n[SUCCESS] Universal extraction completed successfully!")
